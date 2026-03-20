@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 type Status = "ready" | "converting" | "done" | "error";
 
@@ -31,11 +32,13 @@ interface FileEntry {
   preview: string;
   sourceFormat: string;
   targetFormat: string;
+  quality: number;
   status: Status;
   result?: Blob;
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const QUALITY_FORMATS = ["jpeg", "webp", "avif"];
 
 const MIME_TO_FORMAT: Record<string, string> = {
   "image/jpeg": "jpeg",
@@ -87,6 +90,7 @@ export default function Home() {
           preview: URL.createObjectURL(file),
           sourceFormat,
           targetFormat: globalFormat === sourceFormat ? "" : globalFormat,
+          quality: 80,
           status: "ready",
         });
       }
@@ -126,7 +130,10 @@ export default function Home() {
       await Promise.allSettled(
         toConvert.map(async (entry) => {
           try {
-            const blob = await convertImage(entry.file, entry.targetFormat);
+            const quality = QUALITY_FORMATS.includes(entry.targetFormat)
+              ? entry.quality
+              : undefined;
+            const blob = await convertImage(entry.file, entry.targetFormat, quality);
             updateFile(entry.id, { status: "done", result: blob });
           } catch {
             updateFile(entry.id, { status: "error" });
@@ -292,85 +299,116 @@ export default function Home() {
 
               {/* List */}
               <div className="space-y-2">
-                {files.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="flex items-center gap-3 rounded-lg border p-3"
-                  >
-                    <img
-                      src={entry.preview}
-                      alt={entry.file.name}
-                      className="h-10 w-10 rounded object-cover shrink-0"
-                    />
+                {files.map((entry) => {
+                  const showQuality =
+                    QUALITY_FORMATS.includes(entry.targetFormat) &&
+                    entry.status !== "done";
 
-                    <span className="text-sm truncate min-w-0 flex-1">
-                      {entry.file.name}
-                    </span>
-
-                    <Select
-                      value={entry.targetFormat || null}
-                      onValueChange={(v) =>
-                        updateFile(entry.id, {
-                          targetFormat: v ?? "",
-                        })
-                      }
-                      disabled={entry.status === "converting" || entry.status === "done"}
+                  return (
+                    <div
+                      key={entry.id}
+                      className="rounded-lg border p-3 space-y-2"
                     >
-                      <SelectTrigger className="w-28 shrink-0">
-                        <SelectValue placeholder="Format" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {formats?.output
-                          .filter((f) => f !== entry.sourceFormat)
-                          .map((f) => (
-                            <SelectItem key={f} value={f}>
-                              {f.toUpperCase()}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={entry.preview}
+                          alt={entry.file.name}
+                          className="h-10 w-10 rounded object-cover shrink-0"
+                        />
 
-                    <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
-                      {formatSize(entry.file.size)}
-                    </span>
+                        <span className="text-sm truncate min-w-0 flex-1">
+                          {entry.file.name}
+                        </span>
 
-                    <span className="w-20 text-xs text-center shrink-0">
-                      {entry.status === "ready" && (
-                        <span className="text-muted-foreground">Ready</span>
-                      )}
-                      {entry.status === "converting" && (
-                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                      )}
-                      {entry.status === "done" && (
-                        <span className="text-green-600">Done</span>
-                      )}
-                      {entry.status === "error" && (
-                        <span className="text-red-600">Error</span>
-                      )}
-                    </span>
+                        <Select
+                          value={entry.targetFormat || null}
+                          onValueChange={(v) =>
+                            updateFile(entry.id, {
+                              targetFormat: v ?? "",
+                            })
+                          }
+                          disabled={
+                            entry.status === "converting" ||
+                            entry.status === "done"
+                          }
+                        >
+                          <SelectTrigger className="w-28 shrink-0">
+                            <SelectValue placeholder="Format" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {formats?.output
+                              .filter((f) => f !== entry.sourceFormat)
+                              .map((f) => (
+                                <SelectItem key={f} value={f}>
+                                  {f.toUpperCase()}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
 
-                    {entry.status === "done" ? (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => downloadFile(entry)}
-                        aria-label="Download"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => removeFile(entry.id)}
-                        disabled={entry.status === "converting"}
-                        aria-label="Remove"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                        <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                          {formatSize(entry.file.size)}
+                        </span>
+
+                        <span className="w-20 text-xs text-center shrink-0">
+                          {entry.status === "ready" && (
+                            <span className="text-muted-foreground">Ready</span>
+                          )}
+                          {entry.status === "converting" && (
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                          )}
+                          {entry.status === "done" && (
+                            <span className="text-green-600">Done</span>
+                          )}
+                          {entry.status === "error" && (
+                            <span className="text-red-600">Error</span>
+                          )}
+                        </span>
+
+                        {entry.status === "done" ? (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => downloadFile(entry)}
+                            aria-label="Download"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeFile(entry.id)}
+                            disabled={entry.status === "converting"}
+                            aria-label="Remove"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+
+                      {showQuality && (
+                        <div className="flex items-center gap-3 pl-13">
+                          <span className="text-xs text-muted-foreground w-20 shrink-0">
+                            Quality: {entry.quality}
+                          </span>
+                          <Slider
+                            min={1}
+                            max={100}
+                            step={1}
+                            value={[entry.quality]}
+                            onValueChange={(v) =>
+                              updateFile(entry.id, {
+                                quality: Array.isArray(v) ? v[0] : v,
+                              })
+                            }
+                            className="flex-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
