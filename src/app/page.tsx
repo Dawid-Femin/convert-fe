@@ -34,7 +34,6 @@ interface FileEntry {
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
-const NONE_FORMAT = "__none__";
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -217,9 +216,9 @@ export default function Home() {
               {/* Toolbar */}
               <div className="flex items-center gap-3 flex-wrap">
                 <Select
-                  value={globalFormat || NONE_FORMAT}
+                  value={globalFormat || null}
                   onValueChange={(v) => {
-                    const fmt = v === NONE_FORMAT ? "" : (v ?? "");
+                    const fmt = v ?? "";
                     setGlobalFormat(fmt);
                     if (fmt) {
                       setFiles((prev) =>
@@ -234,7 +233,6 @@ export default function Home() {
                     <SelectValue placeholder="Convert all to" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={NONE_FORMAT}>Convert all to</SelectItem>
                     {formats?.output.map((f) => (
                       <SelectItem key={f} value={f}>
                         {f.toUpperCase()}
@@ -286,10 +284,10 @@ export default function Home() {
                     </span>
 
                     <Select
-                      value={entry.targetFormat || NONE_FORMAT}
+                      value={entry.targetFormat || null}
                       onValueChange={(v) =>
                         updateFile(entry.id, {
-                          targetFormat: v === NONE_FORMAT ? "" : (v ?? ""),
+                          targetFormat: v ?? "",
                         })
                       }
                       disabled={entry.status === "converting" || entry.status === "done"}
@@ -298,7 +296,6 @@ export default function Home() {
                         <SelectValue placeholder="Format" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={NONE_FORMAT}>Format</SelectItem>
                         {formats?.output.map((f) => (
                           <SelectItem key={f} value={f}>
                             {f.toUpperCase()}
