@@ -28,12 +28,24 @@ interface FileEntry {
   id: string;
   file: File;
   preview: string;
+  sourceFormat: string;
   targetFormat: string;
   status: Status;
   result?: Blob;
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
+const MIME_TO_FORMAT: Record<string, string> = {
+  "image/jpeg": "jpeg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/tiff": "tiff",
+  "image/bmp": "bmp",
+  "image/avif": "avif",
+  "image/svg+xml": "svg",
+};
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -67,11 +79,13 @@ export default function Home() {
           toast.error(`${file.name} exceeds 20MB limit`);
           continue;
         }
+        const sourceFormat = MIME_TO_FORMAT[file.type] ?? "";
         entries.push({
           id: crypto.randomUUID(),
           file,
           preview: URL.createObjectURL(file),
-          targetFormat: globalFormat,
+          sourceFormat,
+          targetFormat: globalFormat === sourceFormat ? "" : globalFormat,
           status: "ready",
         });
       }
@@ -223,7 +237,11 @@ export default function Home() {
                     if (fmt) {
                       setFiles((prev) =>
                         prev.map((f) =>
-                          f.status === "ready" ? { ...f, targetFormat: fmt } : f,
+                          f.status === "ready" && f.sourceFormat !== fmt
+                            ? { ...f, targetFormat: fmt }
+                            : f.status === "ready" && f.sourceFormat === fmt
+                              ? { ...f, targetFormat: "" }
+                              : f,
                         ),
                       );
                     }
@@ -296,11 +314,13 @@ export default function Home() {
                         <SelectValue placeholder="Format" />
                       </SelectTrigger>
                       <SelectContent>
-                        {formats?.output.map((f) => (
-                          <SelectItem key={f} value={f}>
-                            {f.toUpperCase()}
-                          </SelectItem>
-                        ))}
+                        {formats?.output
+                          .filter((f) => f !== entry.sourceFormat)
+                          .map((f) => (
+                            <SelectItem key={f} value={f}>
+                              {f.toUpperCase()}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
 
