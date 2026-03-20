@@ -7,6 +7,7 @@ import JSZip from "jszip";
 import { Upload, Download, Loader2, X, Trash2 } from "lucide-react";
 import { getFormats, convertImage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Card,
   CardContent,
@@ -180,10 +181,15 @@ export default function Home() {
     <main className="flex-1 flex flex-col items-center p-4 gap-6 max-w-4xl mx-auto w-full">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Image Converter</CardTitle>
-          <CardDescription>
-            Upload images and convert them to different formats
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Image Converter</CardTitle>
+              <CardDescription>
+                Upload images and convert them to different formats
+              </CardDescription>
+            </div>
+            <ThemeToggle />
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Drop zone */}
