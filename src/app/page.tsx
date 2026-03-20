@@ -3,9 +3,8 @@
 import { useCallback, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Upload, Download, Loader2 } from "lucide-react";
-import { getFormats, convertImage, getImageMetadata } from "@/lib/api";
-import type { ImageMetadata } from "@/lib/api";
+import { Upload, Download, Loader2, X, ImageIcon } from "lucide-react";
+import { getFormats, convertImage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,17 +20,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 
-const QUALITY_FORMATS = ["jpeg", "webp", "avif"];
+type Status = "ready" | "converting" | "done" | "error";
+
+interface FileEntry {
+  id: string;
+  file: File;
+  preview: string;
+  targetFormat: string;
+  status: Status;
+  result?: Blob;
+}
+
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [targetFormat, setTargetFormat] = useState<string>("");
-  const [quality, setQuality] = useState(80);
-  const [metadata, setMetadata] = useState<ImageMetadata | null>(null);
+  const [files, setFiles] = useState<FileEntry[]>([]);
+  const [globalFormat, setGlobalFormat] = useState<string>("");
   const [dragOver, setDragOver] = useState(false);
 
   const { data: formats } = useQuery({
@@ -40,57 +50,97 @@ export default function Home() {
     queryFn: getFormats,
   });
 
-  const metadataMutation = useMutation({
-    mutationFn: getImageMetadata,
-    onSuccess: setMetadata,
-    onError: () => toast.error("Failed to read image metadata"),
-  });
-
-  const convertMutation = useMutation({
-    mutationFn: () => convertImage(file!, targetFormat, supportsQuality ? quality : undefined),
-    onSuccess: (blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `converted.${targetFormat}`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Image converted and downloaded!");
-    },
-    onError: () => toast.error("Failed to convert image"),
-  });
-
-  const handleFile = useCallback((f: File) => {
-    if (f.size > MAX_FILE_SIZE) {
-      toast.error("File size exceeds 20MB limit");
-      return;
-    }
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setMetadata(null);
-    setTargetFormat("");
-    metadataMutation.mutate(f);
+  const updateFile = useCallback((id: string, patch: Partial<FileEntry>) => {
+    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } : f)));
   }, []);
+
+  const addFiles = useCallback(
+    (incoming: FileList | File[]) => {
+      const entries: FileEntry[] = [];
+      for (const file of Array.from(incoming)) {
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`${file.name} exceeds 20MB limit`);
+          continue;
+        }
+        entries.push({
+          id: crypto.randomUUID(),
+          file,
+          preview: URL.createObjectURL(file),
+          targetFormat: globalFormat,
+          status: "ready",
+        });
+      }
+      setFiles((prev) => [...prev, ...entries]);
+    },
+    [globalFormat],
+  );
+
+  const removeFile = useCallback((id: string) => {
+    setFiles((prev) => {
+      const entry = prev.find((f) => f.id === id);
+      if (entry) URL.revokeObjectURL(entry.preview);
+      return prev.filter((f) => f.id !== id);
+    });
+  }, []);
+
+  const convertAllMutation = useMutation({
+    mutationFn: async () => {
+      const toConvert = files.filter(
+        (f) => f.status !== "done" && f.targetFormat,
+      );
+      if (!toConvert.length) {
+        toast.error("No files ready to convert");
+        return;
+      }
+
+      for (const entry of toConvert) {
+        updateFile(entry.id, { status: "converting" });
+      }
+
+      await Promise.allSettled(
+        toConvert.map(async (entry) => {
+          try {
+            const blob = await convertImage(entry.file, entry.targetFormat);
+            updateFile(entry.id, { status: "done", result: blob });
+          } catch {
+            updateFile(entry.id, { status: "error" });
+          }
+        }),
+      );
+    },
+    onSuccess: () => toast.success("Conversion complete"),
+  });
+
+  const downloadFile = (entry: FileEntry) => {
+    if (!entry.result) return;
+    const url = URL.createObjectURL(entry.result);
+    const a = document.createElement("a");
+    a.href = url;
+    const name = entry.file.name.replace(/\.[^.]+$/, "");
+    a.download = `${name}.${entry.targetFormat}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
-      const f = e.dataTransfer.files[0];
-      if (f) handleFile(f);
+      if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     },
-    [handleFile],
+    [addFiles],
   );
 
-  const supportsQuality = QUALITY_FORMATS.includes(targetFormat);
+  const readyCount = files.filter((f) => f.targetFormat && f.status !== "done").length;
+  const isConverting = convertAllMutation.isPending;
 
   return (
-    <main className="flex-1 flex items-center justify-center p-4">
-      <Card className="w-full max-w-lg">
+    <main className="flex-1 flex flex-col items-center p-4 gap-6 max-w-4xl mx-auto w-full">
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Image Converter</CardTitle>
           <CardDescription>
-            Upload an image and convert it to a different format
+            Upload images and convert them to different formats
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -115,89 +165,148 @@ export default function Home() {
                 : "border-muted-foreground/25 hover:border-primary/50"
             }`}
           >
-            {preview ? (
-              <img
-                src={preview}
-                alt="Preview"
-                className="mx-auto max-h-48 rounded object-contain"
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <Upload className="h-8 w-8" />
-                <p>Drop an image here or click to browse</p>
-              </div>
-            )}
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <Upload className="h-8 w-8" />
+              <p>Drop images here or click to browse</p>
+            </div>
             <input
               id="file-input"
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
+                if (e.target.files?.length) addFiles(e.target.files);
+                e.target.value = "";
               }}
             />
           </div>
 
-          {/* Metadata */}
-          {metadata && (
-            <div className="text-sm text-muted-foreground grid grid-cols-2 gap-1">
-              <span>Format: {metadata.format}</span>
-              <span>Size: {(metadata.size / 1024).toFixed(1)} KB</span>
-              <span>
-                Dimensions: {metadata.width}×{metadata.height}
-              </span>
-              <span>Channels: {metadata.channels}</span>
-            </div>
-          )}
+          {/* File list */}
+          {files.length > 0 && (
+            <>
+              {/* Global format + convert */}
+              <div className="flex items-center gap-3">
+                <Select
+                  value={globalFormat}
+                  onValueChange={(v) => {
+                    const fmt = v ?? "";
+                    setGlobalFormat(fmt);
+                    setFiles((prev) =>
+                      prev.map((f) =>
+                        f.status === "ready" ? { ...f, targetFormat: fmt } : f,
+                      ),
+                    );
+                  }}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Convert all to" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {formats?.output.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {f.toUpperCase()}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-          {/* Target format */}
-          {file && (
-            <div className="space-y-2">
-              <Label htmlFor="format">Target format</Label>
-              <Select value={targetFormat} onValueChange={(v) => setTargetFormat(v ?? "")}>
-                <SelectTrigger id="format">
-                  <SelectValue placeholder="Select format" />
-                </SelectTrigger>
-                <SelectContent>
-                  {formats?.output.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {f.toUpperCase()}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+                <Button
+                  onClick={() => convertAllMutation.mutate()}
+                  disabled={isConverting || readyCount === 0}
+                >
+                  {isConverting ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  {isConverting ? "Converting..." : `Convert (${readyCount})`}
+                </Button>
+              </div>
 
-          {/* Quality slider */}
-          {supportsQuality && (
-            <div className="space-y-2">
-              <Label>Quality: {quality}</Label>
-              <Slider
-                min={1}
-                max={100}
-                step={1}
-                value={[quality]}
-                onValueChange={(v) => setQuality(Array.isArray(v) ? v[0] : v)}
-              />
-            </div>
-          )}
+              {/* List */}
+              <div className="space-y-2">
+                {files.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center gap-3 rounded-lg border p-3"
+                  >
+                    {/* Thumbnail */}
+                    <img
+                      src={entry.preview}
+                      alt={entry.file.name}
+                      className="h-10 w-10 rounded object-cover shrink-0"
+                    />
 
-          {/* Convert button */}
-          {file && targetFormat && (
-            <Button
-              className="w-full"
-              onClick={() => convertMutation.mutate()}
-              disabled={convertMutation.isPending}
-            >
-              {convertMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Download className="h-4 w-4 mr-2" />
-              )}
-              {convertMutation.isPending ? "Converting..." : "Convert & Download"}
-            </Button>
+                    {/* Name */}
+                    <span className="text-sm truncate min-w-0 flex-1">
+                      {entry.file.name}
+                    </span>
+
+                    {/* Format select */}
+                    <Select
+                      value={entry.targetFormat}
+                      onValueChange={(v) =>
+                        updateFile(entry.id, { targetFormat: v ?? "" })
+                      }
+                      disabled={entry.status === "converting"}
+                    >
+                      <SelectTrigger className="w-28 shrink-0">
+                        <SelectValue placeholder="Format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formats?.output.map((f) => (
+                          <SelectItem key={f} value={f}>
+                            {f.toUpperCase()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {/* Size */}
+                    <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
+                      {formatSize(entry.file.size)}
+                    </span>
+
+                    {/* Status */}
+                    <span className="w-20 text-xs text-center shrink-0">
+                      {entry.status === "ready" && (
+                        <span className="text-muted-foreground">Ready</span>
+                      )}
+                      {entry.status === "converting" && (
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                      )}
+                      {entry.status === "done" && (
+                        <span className="text-green-600">Done</span>
+                      )}
+                      {entry.status === "error" && (
+                        <span className="text-red-600">Error</span>
+                      )}
+                    </span>
+
+                    {/* Actions */}
+                    {entry.status === "done" ? (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => downloadFile(entry)}
+                        aria-label="Download"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => removeFile(entry.id)}
+                        disabled={entry.status === "converting"}
+                        aria-label="Remove"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
