@@ -4,6 +4,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+button,
+[role="combobox"],
+[role="listbox"],
+[role="option"] {
+  cursor: pointer;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
