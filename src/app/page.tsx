@@ -3,7 +3,8 @@
 import { useCallback, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Upload, Download, Loader2, X, ImageIcon } from "lucide-react";
+import JSZip from "jszip";
+import { Upload, Download, Loader2, X, Trash2 } from "lucide-react";
 import { getFormats, convertImage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,11 +34,16 @@ interface FileEntry {
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
+const NONE_FORMAT = "__none__";
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function baseName(filename: string) {
+  return filename.replace(/\.[^.]+$/, "");
 }
 
 export default function Home() {
@@ -83,6 +89,12 @@ export default function Home() {
     });
   }, []);
 
+  const clearAll = useCallback(() => {
+    files.forEach((f) => URL.revokeObjectURL(f.preview));
+    setFiles([]);
+    setGlobalFormat("");
+  }, [files]);
+
   const convertAllMutation = useMutation({
     mutationFn: async () => {
       const toConvert = files.filter(
@@ -116,8 +128,24 @@ export default function Home() {
     const url = URL.createObjectURL(entry.result);
     const a = document.createElement("a");
     a.href = url;
-    const name = entry.file.name.replace(/\.[^.]+$/, "");
-    a.download = `${name}.${entry.targetFormat}`;
+    a.download = `${baseName(entry.file.name)}.${entry.targetFormat}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadAll = async () => {
+    const done = files.filter((f) => f.status === "done" && f.result);
+    if (!done.length) return;
+
+    const zip = new JSZip();
+    done.forEach((entry) => {
+      zip.file(`${baseName(entry.file.name)}.${entry.targetFormat}`, entry.result!);
+    });
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "converted-images.zip";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -132,6 +160,7 @@ export default function Home() {
   );
 
   const readyCount = files.filter((f) => f.targetFormat && f.status !== "done").length;
+  const doneCount = files.filter((f) => f.status === "done").length;
   const isConverting = convertAllMutation.isPending;
 
   return (
@@ -185,24 +214,27 @@ export default function Home() {
           {/* File list */}
           {files.length > 0 && (
             <>
-              {/* Global format + convert */}
-              <div className="flex items-center gap-3">
+              {/* Toolbar */}
+              <div className="flex items-center gap-3 flex-wrap">
                 <Select
-                  value={globalFormat}
+                  value={globalFormat || NONE_FORMAT}
                   onValueChange={(v) => {
-                    const fmt = v ?? "";
+                    const fmt = v === NONE_FORMAT ? "" : (v ?? "");
                     setGlobalFormat(fmt);
-                    setFiles((prev) =>
-                      prev.map((f) =>
-                        f.status === "ready" ? { ...f, targetFormat: fmt } : f,
-                      ),
-                    );
+                    if (fmt) {
+                      setFiles((prev) =>
+                        prev.map((f) =>
+                          f.status === "ready" ? { ...f, targetFormat: fmt } : f,
+                        ),
+                      );
+                    }
                   }}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Convert all to" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={NONE_FORMAT}>Convert all to</SelectItem>
                     {formats?.output.map((f) => (
                       <SelectItem key={f} value={f}>
                         {f.toUpperCase()}
@@ -215,10 +247,24 @@ export default function Home() {
                   onClick={() => convertAllMutation.mutate()}
                   disabled={isConverting || readyCount === 0}
                 >
-                  {isConverting ? (
+                  {isConverting && (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : null}
+                  )}
                   {isConverting ? "Converting..." : `Convert (${readyCount})`}
+                </Button>
+
+                <div className="flex-1" />
+
+                {doneCount > 0 && (
+                  <Button variant="outline" onClick={downloadAll}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download All ({doneCount})
+                  </Button>
+                )}
+
+                <Button variant="ghost" onClick={clearAll} disabled={isConverting}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear
                 </Button>
               </div>
 
@@ -229,30 +275,30 @@ export default function Home() {
                     key={entry.id}
                     className="flex items-center gap-3 rounded-lg border p-3"
                   >
-                    {/* Thumbnail */}
                     <img
                       src={entry.preview}
                       alt={entry.file.name}
                       className="h-10 w-10 rounded object-cover shrink-0"
                     />
 
-                    {/* Name */}
                     <span className="text-sm truncate min-w-0 flex-1">
                       {entry.file.name}
                     </span>
 
-                    {/* Format select */}
                     <Select
-                      value={entry.targetFormat}
+                      value={entry.targetFormat || NONE_FORMAT}
                       onValueChange={(v) =>
-                        updateFile(entry.id, { targetFormat: v ?? "" })
+                        updateFile(entry.id, {
+                          targetFormat: v === NONE_FORMAT ? "" : (v ?? ""),
+                        })
                       }
-                      disabled={entry.status === "converting"}
+                      disabled={entry.status === "converting" || entry.status === "done"}
                     >
                       <SelectTrigger className="w-28 shrink-0">
                         <SelectValue placeholder="Format" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={NONE_FORMAT}>Format</SelectItem>
                         {formats?.output.map((f) => (
                           <SelectItem key={f} value={f}>
                             {f.toUpperCase()}
@@ -261,12 +307,10 @@ export default function Home() {
                       </SelectContent>
                     </Select>
 
-                    {/* Size */}
                     <span className="text-xs text-muted-foreground w-16 text-right shrink-0">
                       {formatSize(entry.file.size)}
                     </span>
 
-                    {/* Status */}
                     <span className="w-20 text-xs text-center shrink-0">
                       {entry.status === "ready" && (
                         <span className="text-muted-foreground">Ready</span>
@@ -282,7 +326,6 @@ export default function Home() {
                       )}
                     </span>
 
-                    {/* Actions */}
                     {entry.status === "done" ? (
                       <Button
                         size="icon"
