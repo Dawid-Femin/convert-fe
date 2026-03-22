@@ -7,9 +7,9 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/", label: "Konwerter" },
+  { href: "/", label: "Converter" },
   { href: "/batch", label: "Batch" },
-  { href: "/history", label: "Historia" },
+  { href: "/history", label: "History" },
   { href: "/api-docs", label: "API" },
 ];
 

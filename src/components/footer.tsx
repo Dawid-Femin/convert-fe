@@ -9,9 +9,9 @@ export function Footer() {
           <span>ImageConvert &copy; {new Date().getFullYear()}</span>
         </div>
         <div className="flex gap-4">
-          <a href="#" className="hover:text-foreground transition-colors">Regulamin</a>
-          <a href="#" className="hover:text-foreground transition-colors">Prywatność</a>
-          <a href="#" className="hover:text-foreground transition-colors">Kontakt</a>
+          <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+          <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
+          <a href="#" className="hover:text-foreground transition-colors">Contact</a>
         </div>
       </div>
     </footer>
