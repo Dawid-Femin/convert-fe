@@ -62,6 +62,12 @@ const VIDEO_MIME_TO_FORMAT: Record<string, string> = {
   "video/x-matroska": "mkv",
   "video/webm": "webm",
   "video/x-flv": "flv",
+  "video/x-ms-wmv": "wmv",
+  "video/3gpp": "3gp",
+  "video/x-m4v": "m4v",
+  "video/mp2t": "ts",
+  "video/ogg": "ogg",
+  "video/x-ms-vob": "vob",
 };
 
 function formatSize(bytes: number) {
@@ -249,7 +255,7 @@ export default function VideoPage() {
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <Upload className="h-8 w-8" />
               <p>Drop videos here or click to browse</p>
-              <p className="text-xs">MP4, AVI, MOV, MKV, WebM, FLV</p>
+              <p className="text-xs">MP4, AVI, MOV, MKV, WebM, FLV, WMV, 3GP, M4V, TS, OGG, VOB</p>
             </div>
             <input
               id="video-input"
