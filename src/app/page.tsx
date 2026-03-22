@@ -188,14 +188,10 @@ export default function Home() {
     <main className="flex-1 flex flex-col items-center p-4 gap-6 max-w-4xl mx-auto w-full">
       <Card className="w-full">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Image Converter</CardTitle>
-              <CardDescription>
-                Upload images and convert them to different formats
-              </CardDescription>
-            </div>
-          </div>
+          <CardTitle>Image Converter</CardTitle>
+          <CardDescription>
+            Upload images and convert them to different formats
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Drop zone */}
@@ -222,6 +218,7 @@ export default function Home() {
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <Upload className="h-8 w-8" />
               <p>Drop images here or click to browse</p>
+              <p className="text-xs">JPEG, PNG, WebP, GIF, TIFF, BMP, AVIF, SVG</p>
             </div>
             <input
               id="file-input"
