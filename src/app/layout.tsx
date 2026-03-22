@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -21,7 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.className} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col">
-        <Providers>{children}</Providers>
+        <Providers>
+          <Navbar />
+          {children}
+          <Footer />
+        </Providers>
         <Toaster />
       </body>
     </html>

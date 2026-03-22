@@ -7,7 +7,7 @@ import JSZip from "jszip";
 import { Upload, Download, Loader2, X, Trash2 } from "lucide-react";
 import { getFormats, convertImage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
+
 import {
   Card,
   CardContent,
@@ -195,7 +195,6 @@ export default function Home() {
                 Upload images and convert them to different formats
               </CardDescription>
             </div>
-            <ThemeToggle />
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
