@@ -358,8 +358,32 @@ export default function VideoPage() {
                           </SelectContent>
                         </Select>
 
-                        <span className="text-xs text-muted-foreground w-20 text-right shrink-0">
+                        <span className="text-xs text-muted-foreground w-32 text-right shrink-0">
                           {formatSize(entry.file.size)}
+                          {entry.status === "completed" && entry.result && (
+                            <>
+                              {" → "}
+                              {formatSize(entry.result.size)}
+                              <br />
+                              <span
+                                className={
+                                  entry.result.size < entry.file.size
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }
+                              >
+                                {entry.result.size < entry.file.size ? "-" : "+"}
+                                {Math.abs(
+                                  Math.round(
+                                    ((entry.result.size - entry.file.size) /
+                                      entry.file.size) *
+                                      100,
+                                  ),
+                                )}
+                                %
+                              </span>
+                            </>
+                          )}
                         </span>
 
                         <span className="w-24 text-xs text-center shrink-0">

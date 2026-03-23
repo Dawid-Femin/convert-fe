@@ -343,7 +343,7 @@ export default function Home() {
                           </SelectContent>
                         </Select>
 
-                        <span className="text-xs text-muted-foreground w-28 text-right shrink-0">
+                        <span className="text-xs text-muted-foreground w-32 text-right shrink-0">
                           {formatSize(entry.file.size)}
                           {entry.status === "done" && entry.result && (
                             <>
