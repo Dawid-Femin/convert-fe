@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import JSZip from "jszip";
 import { Upload, Download, Loader2, X, Trash2 } from "lucide-react";
 import { getFormats, convertImage } from "@/lib/api";
-import { getImageWarnings, ConversionWarnings } from "@/components/conversion-warnings";
+import { getImageWarnings, getImageInfos, ConversionWarnings } from "@/components/conversion-warnings";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -430,6 +430,7 @@ export default function Home() {
 
                       <ConversionWarnings
                         warnings={getImageWarnings(entry.sourceFormat, entry.targetFormat)}
+                        infos={getImageInfos(entry.sourceFormat, entry.targetFormat)}
                       />
                     </div>
                   );

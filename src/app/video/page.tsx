@@ -10,7 +10,7 @@ import {
   getVideoJobStatus,
   downloadVideoJob,
 } from "@/lib/api";
-import { ConversionWarnings } from "@/components/conversion-warnings";
+import { ConversionWarnings, getVideoWarnings } from "@/components/conversion-warnings";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -460,9 +460,14 @@ export default function VideoPage() {
 
                       {entry.resolution && entry.resolution !== "original" && (
                         <ConversionWarnings
-                          warnings={["Upscaling won't improve quality — it will only increase file size"]}
+                          warnings={[]}
+                          infos={["Upscaling won't improve quality — it will only increase file size"]}
                         />
                       )}
+
+                      <ConversionWarnings
+                        warnings={getVideoWarnings(entry.sourceFormat, entry.targetFormat)}
+                      />
                     </div>
                   );
                 })}
