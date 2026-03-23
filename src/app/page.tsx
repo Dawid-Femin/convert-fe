@@ -343,13 +343,13 @@ export default function Home() {
                           </SelectContent>
                         </Select>
 
-                        <span className="text-xs text-muted-foreground w-32 text-right shrink-0">
+                        <span className="text-xs text-muted-foreground text-right shrink-0 whitespace-nowrap">
                           {formatSize(entry.file.size)}
                           {entry.status === "done" && entry.result && (
                             <>
                               {" → "}
                               {formatSize(entry.result.size)}
-                              <br />
+                              {" "}
                               <span
                                 className={
                                   entry.result.size < entry.file.size
@@ -357,7 +357,7 @@ export default function Home() {
                                     : "text-red-600"
                                 }
                               >
-                                {entry.result.size < entry.file.size ? "-" : "+"}
+                                ({entry.result.size < entry.file.size ? "-" : "+"}
                                 {Math.abs(
                                   Math.round(
                                     ((entry.result.size - entry.file.size) /
@@ -365,7 +365,7 @@ export default function Home() {
                                       100,
                                   ),
                                 )}
-                                %
+                                %)
                               </span>
                             </>
                           )}
