@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import JSZip from "jszip";
 import { Upload, Download, Loader2, X, Trash2 } from "lucide-react";
-import { getFormats, convertImage } from "@/lib/api";
+import { getFormats, convertImage, getImageMetadata } from "@/lib/api";
 import { getImageWarnings, getImageInfos, ConversionWarnings } from "@/components/conversion-warnings";
 import { Button } from "@/components/ui/button";
 
@@ -36,6 +36,9 @@ interface FileEntry {
   quality: number;
   status: Status;
   result?: Blob;
+  width?: number;
+  height?: number;
+  hasAlpha?: boolean;
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -96,8 +99,20 @@ export default function Home() {
         });
       }
       setFiles((prev) => [...prev, ...entries]);
+
+      for (const entry of entries) {
+        getImageMetadata(entry.file)
+          .then((meta) =>
+            updateFile(entry.id, {
+              width: meta.width,
+              height: meta.height,
+              hasAlpha: meta.hasAlpha,
+            }),
+          )
+          .catch(() => {});
+      }
     },
-    [globalFormat],
+    [globalFormat, updateFile],
   );
 
   const removeFile = useCallback((id: string) => {
@@ -313,9 +328,17 @@ export default function Home() {
                           className="h-10 w-10 rounded object-cover shrink-0"
                         />
 
-                        <span className="text-sm truncate min-w-0 flex-1">
-                          {entry.file.name}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm truncate block">
+                            {entry.file.name}
+                          </span>
+                          {entry.width && entry.height && (
+                            <span className="text-xs text-muted-foreground">
+                              {entry.width}×{entry.height}
+                              {entry.hasAlpha && " · Alpha"}
+                            </span>
+                          )}
+                        </div>
 
                         <Select
                           value={entry.targetFormat || null}

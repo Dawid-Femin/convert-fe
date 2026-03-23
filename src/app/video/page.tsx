@@ -42,6 +42,8 @@ interface FileEntry {
   progress: number;
   result?: Blob;
   error?: string;
+  width?: number;
+  height?: number;
 }
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024;
@@ -70,6 +72,22 @@ const VIDEO_MIME_TO_FORMAT: Record<string, string> = {
   "video/ogg": "ogg",
   "video/x-ms-vob": "vob",
 };
+
+function getVideoDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      resolve({ width: video.videoWidth, height: video.videoHeight });
+      URL.revokeObjectURL(video.src);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject();
+    };
+    video.src = URL.createObjectURL(file);
+  });
+}
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -157,8 +175,14 @@ export default function VideoPage() {
         });
       }
       setFiles((prev) => [...prev, ...entries]);
+
+      for (const entry of entries) {
+        getVideoDimensions(entry.file)
+          .then(({ width, height }) => updateFile(entry.id, { width, height }))
+          .catch(() => {});
+      }
     },
-    [globalFormat],
+    [globalFormat, updateFile],
   );
 
   const removeFile = useCallback((id: string) => {
@@ -333,9 +357,16 @@ export default function VideoPage() {
                       <div className="flex items-center gap-3">
                         <Video className="h-10 w-10 text-muted-foreground shrink-0" />
 
-                        <span className="text-sm truncate min-w-0 flex-1">
-                          {entry.file.name}
-                        </span>
+                        <div className="min-w-0 flex-1">
+                          <span className="text-sm truncate block">
+                            {entry.file.name}
+                          </span>
+                          {entry.width && entry.height && (
+                            <span className="text-xs text-muted-foreground">
+                              {entry.width}×{entry.height}
+                            </span>
+                          )}
+                        </div>
 
                         <Select
                           value={entry.targetFormat || null}
