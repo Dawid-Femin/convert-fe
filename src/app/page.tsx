@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import JSZip from "jszip";
 import { Upload, Download, Loader2, X, Trash2 } from "lucide-react";
 import { getFormats, convertImage } from "@/lib/api";
+import { getImageWarnings, getImageInfos, ConversionWarnings } from "@/components/conversion-warnings";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -342,13 +343,13 @@ export default function Home() {
                           </SelectContent>
                         </Select>
 
-                        <span className="text-xs text-muted-foreground w-28 text-right shrink-0">
+                        <span className="text-xs text-muted-foreground text-right shrink-0 whitespace-nowrap">
                           {formatSize(entry.file.size)}
                           {entry.status === "done" && entry.result && (
                             <>
                               {" → "}
                               {formatSize(entry.result.size)}
-                              <br />
+                              {" "}
                               <span
                                 className={
                                   entry.result.size < entry.file.size
@@ -356,7 +357,7 @@ export default function Home() {
                                     : "text-red-600"
                                 }
                               >
-                                {entry.result.size < entry.file.size ? "-" : "+"}
+                                ({entry.result.size < entry.file.size ? "-" : "+"}
                                 {Math.abs(
                                   Math.round(
                                     ((entry.result.size - entry.file.size) /
@@ -364,7 +365,7 @@ export default function Home() {
                                       100,
                                   ),
                                 )}
-                                %
+                                %)
                               </span>
                             </>
                           )}
@@ -426,6 +427,11 @@ export default function Home() {
                           />
                         </div>
                       )}
+
+                      <ConversionWarnings
+                        warnings={getImageWarnings(entry.sourceFormat, entry.targetFormat)}
+                        infos={getImageInfos(entry.sourceFormat, entry.targetFormat)}
+                      />
                     </div>
                   );
                 })}

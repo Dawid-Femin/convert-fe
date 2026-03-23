@@ -10,6 +10,7 @@ import {
   getVideoJobStatus,
   downloadVideoJob,
 } from "@/lib/api";
+import { ConversionWarnings, getVideoWarnings } from "@/components/conversion-warnings";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -357,8 +358,32 @@ export default function VideoPage() {
                           </SelectContent>
                         </Select>
 
-                        <span className="text-xs text-muted-foreground w-20 text-right shrink-0">
+                        <span className="text-xs text-muted-foreground text-right shrink-0 whitespace-nowrap">
                           {formatSize(entry.file.size)}
+                          {entry.status === "completed" && entry.result && (
+                            <>
+                              {" → "}
+                              {formatSize(entry.result.size)}
+                              {" "}
+                              <span
+                                className={
+                                  entry.result.size < entry.file.size
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }
+                              >
+                                ({entry.result.size < entry.file.size ? "-" : "+"}
+                                {Math.abs(
+                                  Math.round(
+                                    ((entry.result.size - entry.file.size) /
+                                      entry.file.size) *
+                                      100,
+                                  ),
+                                )}
+                                %)
+                              </span>
+                            </>
+                          )}
                         </span>
 
                         <span className="w-24 text-xs text-center shrink-0">
@@ -418,20 +443,25 @@ export default function VideoPage() {
                       {entry.status === "ready" && entry.targetFormat && (
                         <div className="flex items-center gap-4 pl-13 flex-wrap">
                           {showQuality && (
-                            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-                              <span className="text-xs text-muted-foreground w-20 shrink-0">
-                                Quality (CRF): {entry.quality}
+                            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs text-muted-foreground w-20 shrink-0">
+                                  CRF: {entry.quality}
+                                </span>
+                                <Slider
+                                  min={0}
+                                  max={51}
+                                  step={1}
+                                  value={[entry.quality]}
+                                  onValueChange={(v) =>
+                                    updateFile(entry.id, { quality: Array.isArray(v) ? v[0] : v })
+                                  }
+                                  className="flex-1"
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                Lower value = better quality, larger file
                               </span>
-                              <Slider
-                                min={0}
-                                max={51}
-                                step={1}
-                                value={[entry.quality]}
-                                onValueChange={(v) =>
-                                  updateFile(entry.id, { quality: Array.isArray(v) ? v[0] : v })
-                                }
-                                className="flex-1"
-                              />
                             </div>
                           )}
                           <Select
@@ -451,6 +481,17 @@ export default function VideoPage() {
                           </Select>
                         </div>
                       )}
+
+                      {entry.resolution && entry.resolution !== "original" && (
+                        <ConversionWarnings
+                          warnings={[]}
+                          infos={["Upscaling won't improve quality — it will only increase file size"]}
+                        />
+                      )}
+
+                      <ConversionWarnings
+                        warnings={getVideoWarnings(entry.sourceFormat, entry.targetFormat)}
+                      />
                     </div>
                   );
                 })}
