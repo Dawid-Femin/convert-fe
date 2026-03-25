@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/image", label: "Image" },
-  { href: "/compress", label: "Compress" },
   { href: "/video", label: "Video" },
   { href: "/audio", label: "Audio" },
+  { href: "/compress", label: "Compress" },
   { href: "/history", label: "History" },
 ];
 
