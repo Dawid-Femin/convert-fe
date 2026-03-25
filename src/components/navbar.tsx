@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/", label: "Converter" },
+  { href: "/image", label: "Image" },
   { href: "/compress", label: "Compress" },
   { href: "/video", label: "Video" },
   { href: "/audio", label: "Audio" },

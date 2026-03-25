@@ -11,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Image Converter",
-  description: "Convert images between formats",
+  title: "Media Converter",
+  description: "Convert and compress images, videos and audio",
 };
 
 export default function RootLayout({
