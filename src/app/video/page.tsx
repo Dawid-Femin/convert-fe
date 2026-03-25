@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import JSZip from "jszip";
-import { Upload, Download, Loader2, X, Trash2, Video } from "lucide-react";
+import { Upload, Download, Loader2, X, Trash2, Video, Music } from "lucide-react";
 import {
   getVideoFormats,
   submitVideoConversion,
+  submitExtractAudio,
   getVideoJobStatus,
   downloadVideoJob,
 } from "@/lib/api";
@@ -38,6 +39,8 @@ interface FileEntry {
   targetFormat: string;
   quality: number;
   resolution: string;
+  startTime: string;
+  endTime: string;
   status: Status;
   jobId?: string;
   progress: number;
@@ -171,6 +174,8 @@ export default function VideoPage() {
           targetFormat: globalFormat === sourceFormat ? "" : globalFormat,
           quality: 23,
           resolution: "",
+          startTime: "",
+          endTime: "",
           status: "ready",
           progress: 0,
         });
@@ -214,6 +219,8 @@ export default function VideoPage() {
           entry.targetFormat,
           quality,
           resolution,
+          entry.startTime || undefined,
+          entry.endTime || undefined,
         );
         updateFile(entry.id, { status: "pending", jobId });
       } catch {
@@ -501,7 +508,7 @@ export default function VideoPage() {
                         </div>
                       )}
 
-                      {/* Quality + Resolution controls */}
+                      {/* Quality + Resolution + Trim controls */}
                       {entry.status === "ready" && entry.targetFormat && (
                         <div className="flex items-center gap-4 pl-13 flex-wrap">
                           {showQuality && (
@@ -541,6 +548,47 @@ export default function VideoPage() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                      )}
+
+                      {entry.status === "ready" && (
+                        <div className="flex items-center gap-4 pl-13 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Trim:</span>
+                            <input
+                              type="text"
+                              placeholder="Start (00:00:00)"
+                              value={entry.startTime}
+                              onChange={(e) => updateFile(entry.id, { startTime: e.target.value })}
+                              className="w-28 text-xs border rounded px-2 py-1 bg-background"
+                            />
+                            <span className="text-xs text-muted-foreground">→</span>
+                            <input
+                              type="text"
+                              placeholder="End (00:00:00)"
+                              value={entry.endTime}
+                              onChange={(e) => updateFile(entry.id, { endTime: e.target.value })}
+                              className="w-28 text-xs border rounded px-2 py-1 bg-background"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            disabled={isProcessing}
+                            onClick={async () => {
+                              updateFile(entry.id, { status: "uploading" });
+                              try {
+                                const { jobId } = await submitExtractAudio(entry.file, "mp3", 192);
+                                updateFile(entry.id, { status: "pending", jobId, targetFormat: "mp3" });
+                              } catch {
+                                updateFile(entry.id, { status: "failed", error: "Extract failed" });
+                              }
+                            }}
+                          >
+                            <Music className="h-3 w-3 mr-1" />
+                            Extract Audio (MP3)
+                          </Button>
                         </div>
                       )}
 

@@ -92,14 +92,32 @@ export async function submitVideoConversion(
   targetFormat: string,
   quality?: number,
   resolution?: string,
+  startTime?: string,
+  endTime?: string,
 ): Promise<{ jobId: string; status: string }> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("targetFormat", targetFormat);
   if (quality !== undefined) formData.append("quality", String(quality));
   if (resolution) formData.append("resolution", resolution);
+  if (startTime) formData.append("startTime", startTime);
+  if (endTime) formData.append("endTime", endTime);
 
   const { data } = await api.post("/video/convert", formData);
+  return data;
+}
+
+export async function submitExtractAudio(
+  file: File,
+  format: string,
+  bitrate?: number,
+): Promise<{ jobId: string; status: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("format", format);
+  if (bitrate !== undefined) formData.append("bitrate", String(bitrate));
+
+  const { data } = await api.post("/video/extract-audio", formData);
   return data;
 }
 
