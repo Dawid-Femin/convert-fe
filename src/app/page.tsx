@@ -202,6 +202,13 @@ export default function Home() {
 
   return (
     <main className="flex-1 flex flex-col items-center p-4 gap-6 max-w-4xl mx-auto w-full">
+      <section className="w-full rounded-lg border bg-gradient-to-br from-muted/50 to-muted px-6 py-8 text-center">
+        <h1 className="text-2xl font-bold tracking-tight">Convert your images in seconds</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Drop files below to convert between JPEG, PNG, WebP, AVIF and more — free, fast, and private.
+        </p>
+      </section>
+
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Image Converter</CardTitle>
