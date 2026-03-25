@@ -23,7 +23,7 @@ export function Navbar() {
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <ImageIcon className="h-5 w-5" />
-            <span>ImageConvert</span>
+            <span>Converter</span>
           </Link>
           <div className="hidden sm:flex items-center gap-1">
             {links.map(({ href, label }) => (
