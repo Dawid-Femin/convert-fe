@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import JSZip from "jszip";
-import { Upload, Download, Loader2, X, Trash2, Video } from "lucide-react";
+import { Upload, Download, Loader2, X, Trash2, Video, Scissors } from "lucide-react";
 import {
   getVideoFormats,
   submitVideoConversion,
@@ -40,6 +40,7 @@ interface FileEntry {
   resolution: string;
   trimStart: number;
   trimEnd: number;
+  trimEnabled: boolean;
   duration: number;
   status: Status;
   jobId?: string;
@@ -189,6 +190,7 @@ export default function VideoPage() {
           resolution: "",
           trimStart: 0,
           trimEnd: 0,
+          trimEnabled: false,
           duration: 0,
           status: "ready",
           progress: 0,
@@ -235,8 +237,8 @@ export default function VideoPage() {
           entry.targetFormat,
           quality,
           resolution,
-          entry.trimStart > 0 ? String(entry.trimStart) : undefined,
-          entry.trimEnd < entry.duration ? String(entry.trimEnd) : undefined,
+          entry.trimEnabled && entry.trimStart > 0 ? String(entry.trimStart) : undefined,
+          entry.trimEnabled && entry.trimEnd < entry.duration ? String(entry.trimEnd) : undefined,
         );
         updateFile(entry.id, { status: "pending", jobId });
       } catch {
@@ -582,25 +584,45 @@ export default function VideoPage() {
                       )}
 
                       {entry.status === "ready" && entry.duration > 0 && (
-                        <div className="flex items-center gap-3 pl-13">
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {formatTime(entry.trimStart)}
-                          </span>
-                          <Slider
-                            min={0}
-                            max={Math.floor(entry.duration)}
-                            step={1}
-                            value={[entry.trimStart, entry.trimEnd]}
-                            onValueChange={(v) => {
-                              if (Array.isArray(v) && v.length === 2) {
-                                updateFile(entry.id, { trimStart: v[0], trimEnd: v[1] });
-                              }
-                            }}
-                            className="flex-1"
-                          />
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {formatTime(entry.trimEnd)}
-                          </span>
+                        <div className="space-y-2 pl-13">
+                          <Button
+                            size="sm"
+                            variant={entry.trimEnabled ? "secondary" : "outline"}
+                            className="text-xs"
+                            onClick={() =>
+                              updateFile(entry.id, {
+                                trimEnabled: !entry.trimEnabled,
+                                ...(!entry.trimEnabled ? {} : { trimStart: 0, trimEnd: Math.floor(entry.duration) }),
+                              })
+                            }
+                          >
+                            <Scissors className="h-3 w-3 mr-1" />
+                            {entry.trimEnabled
+                              ? `Trim: ${formatTime(entry.trimStart)} – ${formatTime(entry.trimEnd)}`
+                              : "Trim"}
+                          </Button>
+                          {entry.trimEnabled && (
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-muted-foreground shrink-0 w-12 text-right">
+                                {formatTime(entry.trimStart)}
+                              </span>
+                              <Slider
+                                min={0}
+                                max={Math.floor(entry.duration)}
+                                step={1}
+                                value={[entry.trimStart, entry.trimEnd]}
+                                onValueChange={(v) => {
+                                  if (Array.isArray(v) && v.length === 2) {
+                                    updateFile(entry.id, { trimStart: v[0], trimEnd: v[1] });
+                                  }
+                                }}
+                                className="flex-1"
+                              />
+                              <span className="text-xs text-muted-foreground shrink-0 w-12">
+                                {formatTime(entry.trimEnd)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
 
