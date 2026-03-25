@@ -98,3 +98,48 @@ export async function downloadVideoJob(jobId: string): Promise<Blob> {
   });
   return data;
 }
+
+// Audio API
+
+export interface AudioFormats {
+  input: string[];
+  output: string[];
+}
+
+export interface AudioJobStatus {
+  jobId: string;
+  status: "pending" | "active" | "completed" | "failed";
+  progress: number;
+  error?: string;
+}
+
+export async function getAudioFormats(): Promise<AudioFormats> {
+  const { data } = await api.get<AudioFormats>("/audio/formats");
+  return data;
+}
+
+export async function submitAudioConversion(
+  file: File,
+  targetFormat: string,
+  bitrate?: number,
+): Promise<{ jobId: string; status: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("targetFormat", targetFormat);
+  if (bitrate !== undefined) formData.append("bitrate", String(bitrate));
+
+  const { data } = await api.post("/audio/convert", formData);
+  return data;
+}
+
+export async function getAudioJobStatus(jobId: string): Promise<AudioJobStatus> {
+  const { data } = await api.get<AudioJobStatus>(`/audio/jobs/${jobId}`);
+  return data;
+}
+
+export async function downloadAudioJob(jobId: string): Promise<Blob> {
+  const { data } = await api.get(`/audio/jobs/${jobId}/download`, {
+    responseType: "blob",
+  });
+  return data;
+}

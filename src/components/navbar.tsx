@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/", label: "Converter" },
   { href: "/video", label: "Video" },
+  { href: "/audio", label: "Audio" },
   { href: "/batch", label: "Batch" },
   { href: "/history", label: "History" },
   { href: "/api-docs", label: "API" },
