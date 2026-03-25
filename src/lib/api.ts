@@ -52,6 +52,22 @@ export async function getImageMetadata(
   return data;
 }
 
+export async function compressImage(
+  file: File,
+  quality?: number,
+  palette?: boolean,
+): Promise<Blob> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (quality !== undefined) formData.append("quality", String(quality));
+  if (palette) formData.append("palette", "true");
+
+  const { data } = await api.post("/compress", formData, {
+    responseType: "blob",
+  });
+  return data;
+}
+
 // Video API
 
 export interface VideoFormats {
