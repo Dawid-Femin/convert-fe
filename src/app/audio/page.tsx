@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import JSZip from "jszip";
 import { Upload, Download, Loader2, X, Trash2, Music } from "lucide-react";
 import {
   getAudioFormats,
@@ -193,6 +194,22 @@ export default function AudioPage() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadAll = async () => {
+    const done = files.filter((f) => f.status === "completed" && f.result);
+    if (!done.length) return;
+    const zip = new JSZip();
+    done.forEach((entry) =>
+      zip.file(`${baseName(entry.file.name)}.${entry.targetFormat}`, entry.result!),
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "converted-audio.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -305,6 +322,13 @@ export default function AudioPage() {
                 </Button>
 
                 <div className="flex-1" />
+
+                {doneCount > 0 && (
+                  <Button variant="outline" onClick={downloadAll}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download All ({doneCount})
+                  </Button>
+                )}
 
                 <Button variant="ghost" onClick={clearAll} disabled={isProcessing}>
                   <Trash2 className="h-4 w-4 mr-2" />
