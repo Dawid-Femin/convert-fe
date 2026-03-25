@@ -38,8 +38,9 @@ interface FileEntry {
   targetFormat: string;
   quality: number;
   resolution: string;
-  startTime: string;
-  endTime: string;
+  trimStart: number;
+  trimEnd: number;
+  duration: number;
   status: Status;
   jobId?: string;
   progress: number;
@@ -77,12 +78,16 @@ const VIDEO_MIME_TO_FORMAT: Record<string, string> = {
   "video/x-ms-vob": "vob",
 };
 
-function getVideoDimensions(file: File): Promise<{ width: number; height: number }> {
+function getVideoInfo(file: File): Promise<{ width: number; height: number; duration: number }> {
   return new Promise((resolve, reject) => {
     const video = document.createElement("video");
     video.preload = "metadata";
     video.onloadedmetadata = () => {
-      resolve({ width: video.videoWidth, height: video.videoHeight });
+      resolve({
+        width: video.videoWidth,
+        height: video.videoHeight,
+        duration: video.duration,
+      });
       URL.revokeObjectURL(video.src);
     };
     video.onerror = () => {
@@ -91,6 +96,14 @@ function getVideoDimensions(file: File): Promise<{ width: number; height: number
     };
     video.src = URL.createObjectURL(file);
   });
+}
+
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 function formatSize(bytes: number) {
@@ -174,8 +187,9 @@ export default function VideoPage() {
           targetFormat: globalFormat === sourceFormat ? "" : globalFormat,
           quality: 23,
           resolution: "",
-          startTime: "",
-          endTime: "",
+          trimStart: 0,
+          trimEnd: 0,
+          duration: 0,
           status: "ready",
           progress: 0,
         });
@@ -183,8 +197,10 @@ export default function VideoPage() {
       setFiles((prev) => [...prev, ...entries]);
 
       for (const entry of entries) {
-        getVideoDimensions(entry.file)
-          .then(({ width, height }) => updateFile(entry.id, { width, height }))
+        getVideoInfo(entry.file)
+          .then(({ width, height, duration }) =>
+            updateFile(entry.id, { width, height, duration, trimEnd: Math.floor(duration) }),
+          )
           .catch(() => {});
       }
     },
@@ -219,8 +235,8 @@ export default function VideoPage() {
           entry.targetFormat,
           quality,
           resolution,
-          entry.startTime || undefined,
-          entry.endTime || undefined,
+          entry.trimStart > 0 ? String(entry.trimStart) : undefined,
+          entry.trimEnd < entry.duration ? String(entry.trimEnd) : undefined,
         );
         updateFile(entry.id, { status: "pending", jobId });
       } catch {
@@ -565,26 +581,26 @@ export default function VideoPage() {
                         </div>
                       )}
 
-                      {entry.status === "ready" && (
-                        <div className="flex items-center gap-4 pl-13 flex-wrap">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Trim:</span>
-                            <input
-                              type="text"
-                              placeholder="Start (00:00:00)"
-                              value={entry.startTime}
-                              onChange={(e) => updateFile(entry.id, { startTime: e.target.value })}
-                              className="w-28 text-xs border rounded px-2 py-1 bg-background"
-                            />
-                            <span className="text-xs text-muted-foreground">→</span>
-                            <input
-                              type="text"
-                              placeholder="End (00:00:00)"
-                              value={entry.endTime}
-                              onChange={(e) => updateFile(entry.id, { endTime: e.target.value })}
-                              className="w-28 text-xs border rounded px-2 py-1 bg-background"
-                            />
-                          </div>
+                      {entry.status === "ready" && entry.duration > 0 && (
+                        <div className="flex items-center gap-3 pl-13">
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {formatTime(entry.trimStart)}
+                          </span>
+                          <Slider
+                            min={0}
+                            max={Math.floor(entry.duration)}
+                            step={1}
+                            value={[entry.trimStart, entry.trimEnd]}
+                            onValueChange={(v) => {
+                              if (Array.isArray(v) && v.length === 2) {
+                                updateFile(entry.id, { trimStart: v[0], trimEnd: v[1] });
+                              }
+                            }}
+                            className="flex-1"
+                          />
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {formatTime(entry.trimEnd)}
+                          </span>
                         </div>
                       )}
 
